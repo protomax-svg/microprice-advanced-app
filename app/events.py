@@ -171,14 +171,16 @@ class EventStore:
             event.updated_at_utc = utc_now_iso()
             return len(snapshots)
 
-    def list_saved_events(self, limit: int = 250) -> list[dict[str, object]]:
+    def list_saved_events(self, limit: int | None = 250) -> list[dict[str, object]]:
         with session_scope() as session:
-            events = session.scalars(
+            query = (
                 select(Event)
                 .where(Event.status == "saved")
                 .order_by(Event.event_ts.desc())
-                .limit(limit)
-            ).all()
+            )
+            if limit is not None:
+                query = query.limit(limit)
+            events = session.scalars(query).all()
             return [self._serialize_event_summary(event) for event in events]
 
     def get_event_payload(self, event_id: int) -> dict[str, object] | None:
@@ -272,6 +274,7 @@ class EventStore:
             "id": event.id,
             "symbol": event.symbol,
             "event_time_utc": event.event_time_utc,
+            "event_ts": event.event_ts,
             "snapshot_count": event.snapshot_count,
             "status": event.status,
         }

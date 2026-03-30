@@ -30,6 +30,16 @@ function escapeHtml(value) {
         .replaceAll("'", "&#39;");
 }
 
+function parseEventTimestamp(event) {
+    const numericTs = Number(event.event_ts);
+    if (Number.isFinite(numericTs)) {
+        return numericTs * 1000;
+    }
+
+    const parsedTs = Date.parse(event.event_time_utc || "");
+    return Number.isFinite(parsedTs) ? parsedTs : NaN;
+}
+
 function setConnectionStatus(status, detail) {
     const element = document.getElementById("connection-status");
     if (!element) {
@@ -272,19 +282,116 @@ function renderEventsList(container, events, activeEventId) {
     }).join("");
 }
 
+function applyEventFilters(events, browser) {
+    const fromInput = browser.querySelector("[data-filter-from]");
+    const toInput = browser.querySelector("[data-filter-to]");
+    const dedupeInput = browser.querySelector("[data-filter-dedupe]");
+
+    const fromValue = fromInput?.value ? new Date(fromInput.value).getTime() : NaN;
+    const toValue = toInput?.value ? new Date(toInput.value).getTime() : NaN;
+    const shouldDedupe = Boolean(dedupeInput?.checked);
+
+    const rangeFiltered = events.filter((event) => {
+        const eventMs = parseEventTimestamp(event);
+        if (!Number.isFinite(eventMs)) {
+            return false;
+        }
+        if (Number.isFinite(fromValue) && eventMs < fromValue) {
+            return false;
+        }
+        if (Number.isFinite(toValue) && eventMs > toValue) {
+            return false;
+        }
+        return true;
+    });
+
+    if (!shouldDedupe) {
+        return rangeFiltered;
+    }
+
+    const dedupedEvents = [];
+    let lastKeptMs = NaN;
+    rangeFiltered.forEach((event) => {
+        const eventMs = parseEventTimestamp(event);
+        if (!Number.isFinite(lastKeptMs) || Math.abs(lastKeptMs - eventMs) > 30000) {
+            dedupedEvents.push(event);
+            lastKeptMs = eventMs;
+        }
+    });
+    return dedupedEvents;
+}
+
+function updateEventBrowser(browser, events) {
+    const container = browser.querySelector("[data-events-list]");
+    if (!container) {
+        return;
+    }
+
+    const filteredEvents = applyEventFilters(events, browser);
+    renderEventsList(container, filteredEvents, container.dataset.activeEventId || "");
+
+    const summary = browser.querySelector("[data-events-summary]");
+    if (summary) {
+        const dedupeEnabled = browser.querySelector("[data-filter-dedupe]")?.checked;
+        const suffix = dedupeEnabled ? " after 30s dedupe" : "";
+        summary.textContent = `Showing ${filteredEvents.length} of ${events.length} saved events${suffix}.`;
+    }
+}
+
+function initializeEventBrowsers() {
+    const browsers = [...document.querySelectorAll("[data-events-browser]")];
+    if (!browsers.length) {
+        return [];
+    }
+
+    browsers.forEach((browser) => {
+        browser.querySelectorAll("[data-filter-from], [data-filter-to], [data-filter-dedupe]").forEach((control) => {
+            control.addEventListener("input", () => {
+                updateEventBrowser(browser, browser._events || []);
+            });
+            control.addEventListener("change", () => {
+                updateEventBrowser(browser, browser._events || []);
+            });
+        });
+
+        const resetButton = browser.querySelector("[data-filter-reset]");
+        if (resetButton) {
+            resetButton.addEventListener("click", () => {
+                const fromInput = browser.querySelector("[data-filter-from]");
+                const toInput = browser.querySelector("[data-filter-to]");
+                const dedupeInput = browser.querySelector("[data-filter-dedupe]");
+                if (fromInput) {
+                    fromInput.value = "";
+                }
+                if (toInput) {
+                    toInput.value = "";
+                }
+                if (dedupeInput) {
+                    dedupeInput.checked = true;
+                }
+                updateEventBrowser(browser, browser._events || []);
+            });
+        }
+    });
+
+    return browsers;
+}
+
+const eventBrowsers = initializeEventBrowsers();
+
 async function refreshEventLists() {
-    const containers = [...document.querySelectorAll("[data-events-list]")];
-    if (!containers.length) {
+    if (!eventBrowsers.length) {
         return;
     }
 
     try {
-        const response = await fetch("/api/events?limit=250", { cache: "no-store" });
+        const response = await fetch("/api/events", { cache: "no-store" });
         const payload = await response.json();
         const events = payload.events || [];
 
-        containers.forEach((container) => {
-            renderEventsList(container, events, container.dataset.activeEventId || "");
+        eventBrowsers.forEach((browser) => {
+            browser._events = events;
+            updateEventBrowser(browser, events);
         });
     } catch (error) {
         console.error("Failed to refresh saved events list", error);
@@ -293,13 +400,13 @@ async function refreshEventLists() {
 
 function applyInitialEvents() {
     const initialEvents = readJsonScript("initial-events-data");
-    const containers = [...document.querySelectorAll("[data-events-list]")];
-    if (!initialEvents || !containers.length) {
+    if (!initialEvents || !eventBrowsers.length) {
         return;
     }
 
-    containers.forEach((container) => {
-        renderEventsList(container, initialEvents.events || [], container.dataset.activeEventId || "");
+    eventBrowsers.forEach((browser) => {
+        browser._events = initialEvents.events || [];
+        updateEventBrowser(browser, browser._events);
     });
 }
 

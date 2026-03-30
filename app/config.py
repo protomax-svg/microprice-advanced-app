@@ -14,7 +14,7 @@ class Settings:
         self.max_points = int(os.getenv("MAX_POINTS", "600"))
         self.price_display_decimals = int(os.getenv("PRICE_DISPLAY_DECIMALS", "8"))
         self.snapshot_interval_seconds = float(os.getenv("SNAPSHOT_INTERVAL_SECONDS", "0.1"))
-        self.event_window_seconds = int(os.getenv("EVENT_WINDOW_SECONDS", str(3 * 60)))
+        self.event_window_seconds = int(os.getenv("EVENT_WINDOW_SECONDS", str(1 * 60)))
         self.market_data_only_endpoint = (
             os.getenv("BINANCE_MARKET_DATA_ONLY", "0").strip().lower() in {"1", "true", "yes", "on"}
         )

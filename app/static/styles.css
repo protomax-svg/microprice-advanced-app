@@ -132,6 +132,10 @@ a {
     padding: 1.2rem;
 }
 
+.sidebar-panel {
+    min-height: 0;
+}
+
 .panel-header {
     display: flex;
     justify-content: space-between;
@@ -224,8 +228,85 @@ a {
     gap: 0.75rem;
 }
 
-.large-list {
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+.event-browser {
+    display: grid;
+    gap: 0.9rem;
+    min-height: 0;
+}
+
+.event-browser-controls {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.filter-field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.filter-field span,
+.filter-toggle span,
+.event-browser-summary {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.filter-field input {
+    width: 100%;
+    padding: 0.72rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid rgba(34, 53, 86, 0.9);
+    background: rgba(8, 17, 29, 0.92);
+    color: var(--text);
+    font: inherit;
+}
+
+.filter-field input::-webkit-calendar-picker-indicator {
+    filter: invert(0.9);
+}
+
+.filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.1rem 0;
+}
+
+.filter-toggle input {
+    inline-size: 1rem;
+    block-size: 1rem;
+    accent-color: var(--accent);
+}
+
+.filter-reset {
+    justify-content: center;
+}
+
+.event-browser-summary {
+    margin: 0;
+    min-height: 1.25rem;
+}
+
+.scrollable-list {
+    max-height: calc(100vh - 18rem);
+    overflow-y: auto;
+    padding-right: 0.2rem;
+}
+
+.scrollable-list::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollable-list::-webkit-scrollbar-thumb {
+    background: rgba(63, 182, 255, 0.28);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.scrollable-list::-webkit-scrollbar-track {
+    background: rgba(8, 17, 29, 0.28);
+    border-radius: 999px;
 }
 
 .event-row,
@@ -281,6 +362,10 @@ a {
     .compact-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .scrollable-list {
+        max-height: 28rem;
+    }
 }
 
 @media (max-width: 720px) {
@@ -313,5 +398,9 @@ a {
 
     .tall-chart {
         min-height: 560px;
+    }
+
+    .scrollable-list {
+        max-height: 22rem;
     }
 }

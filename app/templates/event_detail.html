@@ -46,12 +46,30 @@
                 <a href="/api/events/export.csv" class="button-link secondary">Export All CSV</a>
             </div>
         </div>
-        <div
-            id="saved-events-list"
-            class="event-list"
-            data-events-list
-            data-active-event-id="{{ event.id }}"
-        ></div>
+        <div class="event-browser" data-events-browser>
+            <div class="event-browser-controls">
+                <label class="filter-field">
+                    <span>From (local)</span>
+                    <input type="datetime-local" data-filter-from>
+                </label>
+                <label class="filter-field">
+                    <span>To (local)</span>
+                    <input type="datetime-local" data-filter-to>
+                </label>
+                <label class="filter-toggle">
+                    <input type="checkbox" data-filter-dedupe checked>
+                    <span>One event per 30s window</span>
+                </label>
+                <button type="button" class="button-link secondary filter-reset" data-filter-reset>Reset</button>
+            </div>
+            <p class="event-browser-summary" data-events-summary></p>
+            <div
+                id="saved-events-list"
+                class="event-list scrollable-list"
+                data-events-list
+                data-active-event-id="{{ event.id }}"
+            ></div>
+        </div>
     </aside>
 </section>
 

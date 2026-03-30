@@ -40,7 +40,7 @@ async def dashboard(request: Request) -> HTMLResponse:
             "page_name": "dashboard",
             "symbol": settings.symbol,
             "live_json": json.dumps(live_state.build_payload()),
-            "events_json": json.dumps({"events": event_store.list_saved_events(limit=40)}),
+            "events_json": json.dumps({"events": event_store.list_saved_events(limit=None)}),
         },
     )
 
@@ -55,7 +55,7 @@ async def saved_events_page(request: Request) -> HTMLResponse:
             "request": request,
             "page_name": "events",
             "symbol": settings.symbol,
-            "events_json": json.dumps({"events": event_store.list_saved_events(limit=250)}),
+            "events_json": json.dumps({"events": event_store.list_saved_events(limit=None)}),
         },
     )
 
@@ -76,7 +76,7 @@ async def event_detail_page(request: Request, event_id: int) -> HTMLResponse:
             "symbol": settings.symbol,
             "event": event_payload["event"],
             "event_json": json.dumps(event_payload),
-            "events_json": json.dumps({"events": event_store.list_saved_events(limit=250)}),
+            "events_json": json.dumps({"events": event_store.list_saved_events(limit=None)}),
         },
     )
 
@@ -118,9 +118,9 @@ async def live_stream(request: Request) -> StreamingResponse:
 
 
 @router.get("/api/events")
-async def saved_events(request: Request, limit: int = 250) -> dict[str, object]:
+async def saved_events(request: Request, limit: int | None = None) -> dict[str, object]:
     event_store = get_event_store(request)
-    safe_limit = max(1, min(limit, 1000))
+    safe_limit = None if limit is None else max(1, min(limit, 1000))
     return {"events": event_store.list_saved_events(limit=safe_limit)}
 
 

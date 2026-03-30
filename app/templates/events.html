@@ -1,24 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="panel panel-main">
-    <div class="panel-header">
-        <div>
-            <p class="eyebrow">Saved Event Browser</p>
-            <h2>Stored Cross-Under Events</h2>
+<section class="layout-two-column">
+    <div class="panel panel-main">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Saved Event Browser</p>
+                <h2>Stored Cross-Under Events</h2>
+            </div>
+            <div class="button-row">
+                <a href="/" class="button-link secondary">Back to Live</a>
+                <a href="/api/events/export.csv" class="button-link">Export All CSV</a>
+            </div>
         </div>
-        <div class="button-row">
-            <a href="/" class="button-link secondary">Back to Live</a>
-            <a href="/api/events/export.csv" class="button-link">Export All CSV</a>
-        </div>
+
+        <p class="panel-copy">
+            The event browser now loads the full saved-event history. Use the timestamp filters to narrow the
+            range, and enable the 30-second collapse switch when you want only one representative event from
+            each short burst.
+        </p>
     </div>
 
-    <p class="panel-copy">
-        Events are ordered by timestamp. Open any event to inspect the full chart window around the
-        optimal-price cross-under and export only that event if needed.
-    </p>
-
-    <div id="saved-events-page-list" class="event-list large-list" data-events-list></div>
+    <aside class="panel sidebar-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Saved Event Browser</p>
+                <h2>Filtered Event List</h2>
+            </div>
+        </div>
+        <div class="event-browser" data-events-browser>
+            <div class="event-browser-controls">
+                <label class="filter-field">
+                    <span>From (local)</span>
+                    <input type="datetime-local" data-filter-from>
+                </label>
+                <label class="filter-field">
+                    <span>To (local)</span>
+                    <input type="datetime-local" data-filter-to>
+                </label>
+                <label class="filter-toggle">
+                    <input type="checkbox" data-filter-dedupe checked>
+                    <span>One event per 30s window</span>
+                </label>
+                <button type="button" class="button-link secondary filter-reset" data-filter-reset>Reset</button>
+            </div>
+            <p class="event-browser-summary" data-events-summary></p>
+            <div id="saved-events-page-list" class="event-list scrollable-list" data-events-list></div>
+        </div>
+    </aside>
 </section>
 
 <script id="initial-events-data" type="application/json">{{ events_json | safe }}</script>
