@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Binance Spot Indicator Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+    <script src="{{ url_for('plotly_bundle') }}"></script>
+    <script src="{{ url_for('static', path='app.js') }}" defer></script>
+</head>
+<body data-page="{{ page_name }}">
+    <header class="site-header">
+        <div>
+            <p class="eyebrow">Local Binance Spot Monitor</p>
+            <h1>Indicator Dashboard</h1>
+        </div>
+        <div class="header-actions">
+            <span class="symbol-chip">{{ symbol }}</span>
+            <nav class="nav-links">
+                <a href="/" class="{% if page_name == 'dashboard' %}active{% endif %}">Live</a>
+                <a href="/events" class="{% if page_name == 'events' %}active{% endif %}">Saved Events</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

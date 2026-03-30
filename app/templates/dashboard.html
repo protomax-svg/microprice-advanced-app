@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="layout-two-column">
+    <div class="panel panel-main">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Real-Time Dashboard</p>
+                <h2>Live Spot Indicators</h2>
+            </div>
+            <div class="status-cluster">
+                <span id="connection-status" class="status-pill">starting</span>
+                <span id="last-updated" class="status-pill muted">waiting for data</span>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <article class="stat-card">
+                <span>Symbol</span>
+                <strong id="metric-symbol">{{ symbol }}</strong>
+            </article>
+            <article class="stat-card">
+                <span>Actual Price</span>
+                <strong id="metric-actual-price">n/a</strong>
+            </article>
+            <article class="stat-card">
+                <span>Optimal Price</span>
+                <strong id="metric-optimal-price">n/a</strong>
+            </article>
+            <article class="stat-card">
+                <span>Microprice</span>
+                <strong id="metric-microprice">n/a</strong>
+            </article>
+            <article class="stat-card">
+                <span>Imbalance</span>
+                <strong id="metric-imbalance">n/a</strong>
+            </article>
+            <article class="stat-card">
+                <span>OB Volatility Index</span>
+                <strong id="metric-ob-vol">n/a</strong>
+            </article>
+            <article class="stat-card">
+                <span>Saved Events</span>
+                <strong id="metric-saved-events">0</strong>
+            </article>
+            <article class="stat-card">
+                <span>Active Event Windows</span>
+                <strong id="metric-active-windows">0</strong>
+            </article>
+        </div>
+
+        <div id="live-chart" class="chart-surface tall-chart"></div>
+    </div>
+
+    <aside class="panel sidebar-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Saved Event Browser</p>
+                <h2>Recent Events</h2>
+            </div>
+            <div class="button-row">
+                <a href="/events" class="button-link">Browse All</a>
+                <a href="/api/events/export.csv" class="button-link secondary">Export All CSV</a>
+            </div>
+        </div>
+        <div id="saved-events-list" class="event-list" data-events-list></div>
+    </aside>
+</section>
+
+<script id="initial-live-data" type="application/json">{{ live_json | safe }}</script>
+<script id="initial-events-data" type="application/json">{{ events_json | safe }}</script>
+{% endblock %}

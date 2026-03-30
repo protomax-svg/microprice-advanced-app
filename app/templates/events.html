@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel panel-main">
+    <div class="panel-header">
+        <div>
+            <p class="eyebrow">Saved Event Browser</p>
+            <h2>Stored Cross-Under Events</h2>
+        </div>
+        <div class="button-row">
+            <a href="/" class="button-link secondary">Back to Live</a>
+            <a href="/api/events/export.csv" class="button-link">Export All CSV</a>
+        </div>
+    </div>
+
+    <p class="panel-copy">
+        Events are ordered by timestamp. Open any event to inspect the full chart window around the
+        optimal-price cross-under and export only that event if needed.
+    </p>
+
+    <div id="saved-events-page-list" class="event-list large-list" data-events-list></div>
+</section>
+
+<script id="initial-events-data" type="application/json">{{ events_json | safe }}</script>
+{% endblock %}

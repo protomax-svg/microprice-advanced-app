@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="layout-two-column">
+    <div class="panel panel-main">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Saved Event Detail</p>
+                <h2>Event #{{ event.id }} at {{ event.event_time_utc }}</h2>
+            </div>
+            <div class="button-row">
+                <a href="/events" class="button-link secondary">Back to Events</a>
+                <a href="/api/events/{{ event.id }}/export.csv" class="button-link">Export Event CSV</a>
+            </div>
+        </div>
+
+        <div class="stats-grid compact-grid">
+            <article class="stat-card">
+                <span>Event ID</span>
+                <strong>{{ event.id }}</strong>
+            </article>
+            <article class="stat-card">
+                <span>Symbol</span>
+                <strong>{{ event.symbol }}</strong>
+            </article>
+            <article class="stat-card">
+                <span>Event Time</span>
+                <strong>{{ event.event_time_utc }}</strong>
+            </article>
+            <article class="stat-card">
+                <span>Snapshots</span>
+                <strong>{{ event.snapshot_count }}</strong>
+            </article>
+        </div>
+
+        <div id="event-chart" class="chart-surface tall-chart" data-event-id="{{ event.id }}"></div>
+    </div>
+
+    <aside class="panel sidebar-panel">
+        <div class="panel-header">
+            <div>
+                <p class="eyebrow">Saved Event Browser</p>
+                <h2>Jump to Another Event</h2>
+            </div>
+            <div class="button-row">
+                <a href="/api/events/export.csv" class="button-link secondary">Export All CSV</a>
+            </div>
+        </div>
+        <div
+            id="saved-events-list"
+            class="event-list"
+            data-events-list
+            data-active-event-id="{{ event.id }}"
+        ></div>
+    </aside>
+</section>
+
+<script id="initial-event-data" type="application/json">{{ event_json | safe }}</script>
+<script id="initial-events-data" type="application/json">{{ events_json | safe }}</script>
+{% endblock %}
