@@ -124,6 +124,20 @@ async def saved_events(request: Request, limit: int | None = None) -> dict[str, 
     return {"events": event_store.list_saved_events(limit=safe_limit)}
 
 
+@router.get("/api/events/metrics/below-actual")
+async def below_actual_metrics(
+    request: Request,
+    window_seconds: float = 10.0,
+) -> dict[str, object]:
+    event_store = get_event_store(request)
+    safe_window_seconds = max(1.0, min(window_seconds, 60.0))
+    metrics = event_store.calculate_below_actual_window_metrics(window_seconds=safe_window_seconds)
+    return {
+        "window_seconds": safe_window_seconds,
+        "metrics": metrics,
+    }
+
+
 @router.get("/api/events/export.csv")
 async def export_all_events_csv(request: Request) -> StreamingResponse:
     event_store = get_event_store(request)

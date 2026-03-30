@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import csv
 import math
+from collections import deque
 from datetime import datetime, timezone
+from itertools import groupby
 from typing import Iterator
 
 from sqlalchemy import func, select
@@ -214,6 +216,51 @@ class EventStore:
 
     def export_all_events_csv(self) -> tuple[str, Iterator[str]]:
         return settings.csv_export_filename, self._generate_all_events_csv()
+
+    def calculate_below_actual_window_metrics(
+        self,
+        window_seconds: float = 10.0,
+    ) -> dict[int, float]:
+        with session_scope() as session:
+            event_ids = session.scalars(
+                select(Event.id)
+                .where(Event.status == "saved")
+                .order_by(Event.event_ts.desc())
+            ).all()
+            metrics = {int(event_id): 0.0 for event_id in event_ids}
+            if not event_ids:
+                return metrics
+
+            rows = session.execute(
+                select(
+                    EventSnapshot.event_id,
+                    EventSnapshot.snapshot_ts,
+                    EventSnapshot.optimal_below_actual,
+                )
+                .join(Event, Event.id == EventSnapshot.event_id)
+                .where(Event.status == "saved")
+                .order_by(EventSnapshot.event_id.asc(), EventSnapshot.snapshot_ts.asc())
+            ).all()
+
+        interval_seconds = settings.snapshot_interval_seconds
+        for event_id, event_rows in groupby(rows, key=lambda row: int(row.event_id)):
+            below_snapshot_times: deque[float] = deque()
+            max_below_count = 0
+
+            for row in event_rows:
+                snapshot_ts = float(row.snapshot_ts)
+                if bool(row.optimal_below_actual):
+                    below_snapshot_times.append(snapshot_ts)
+
+                while below_snapshot_times and snapshot_ts - below_snapshot_times[0] > window_seconds:
+                    below_snapshot_times.popleft()
+
+                if len(below_snapshot_times) > max_below_count:
+                    max_below_count = len(below_snapshot_times)
+
+            metrics[event_id] = round(max_below_count * interval_seconds, 3)
+
+        return metrics
 
     def _snapshot_dict_to_model(
         self,

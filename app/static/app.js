@@ -40,6 +40,9 @@ function parseEventTimestamp(event) {
     return Number.isFinite(parsedTs) ? parsedTs : NaN;
 }
 
+let belowActualMetrics = null;
+let belowActualMetricsRequest = null;
+
 function setConnectionStatus(status, detail) {
     const element = document.getElementById("connection-status");
     if (!element) {
@@ -282,14 +285,65 @@ function renderEventsList(container, events, activeEventId) {
     }).join("");
 }
 
+function isBelowActualThresholdFilterEnabled() {
+    return eventBrowsers.some((browser) => browser.querySelector("[data-filter-below-actual-threshold]")?.checked);
+}
+
+function applyBelowActualMetrics(events) {
+    events.forEach((event) => {
+        const metricValue = belowActualMetrics?.[String(event.id)] ?? belowActualMetrics?.[event.id] ?? 0;
+        event.max_below_actual_seconds_10s = Number(metricValue) || 0;
+    });
+}
+
+function hasMissingBelowActualMetrics(events) {
+    if (!belowActualMetrics) {
+        return events.length > 0;
+    }
+
+    return events.some((event) => belowActualMetrics[String(event.id)] === undefined && belowActualMetrics[event.id] === undefined);
+}
+
+async function ensureBelowActualMetrics(forceRefresh = false) {
+    if (!forceRefresh && belowActualMetrics) {
+        return belowActualMetrics;
+    }
+
+    if (!forceRefresh && belowActualMetricsRequest) {
+        return belowActualMetricsRequest;
+    }
+
+    belowActualMetricsRequest = fetch("/api/events/metrics/below-actual?window_seconds=10", { cache: "no-store" })
+        .then((response) => response.json())
+        .then((payload) => {
+            belowActualMetrics = payload.metrics || {};
+            belowActualMetricsRequest = null;
+            return belowActualMetrics;
+        })
+        .catch((error) => {
+            belowActualMetricsRequest = null;
+            throw error;
+        });
+
+    return belowActualMetricsRequest;
+}
+
+function refreshAllEventBrowsers() {
+    eventBrowsers.forEach((browser) => {
+        updateEventBrowser(browser, browser._events || []);
+    });
+}
+
 function applyEventFilters(events, browser) {
     const fromInput = browser.querySelector("[data-filter-from]");
     const toInput = browser.querySelector("[data-filter-to]");
     const dedupeInput = browser.querySelector("[data-filter-dedupe]");
+    const belowActualThresholdInput = browser.querySelector("[data-filter-below-actual-threshold]");
 
     const fromValue = fromInput?.value ? new Date(fromInput.value).getTime() : NaN;
     const toValue = toInput?.value ? new Date(toInput.value).getTime() : NaN;
     const shouldDedupe = Boolean(dedupeInput?.checked);
+    const shouldRequireBelowActualThreshold = Boolean(belowActualThresholdInput?.checked);
 
     const rangeFiltered = events.filter((event) => {
         const eventMs = parseEventTimestamp(event);
@@ -305,13 +359,17 @@ function applyEventFilters(events, browser) {
         return true;
     });
 
+    const thresholdFiltered = shouldRequireBelowActualThreshold
+        ? rangeFiltered.filter((event) => Number(event.max_below_actual_seconds_10s || 0) >= 3)
+        : rangeFiltered;
+
     if (!shouldDedupe) {
-        return rangeFiltered;
+        return thresholdFiltered;
     }
 
     const dedupedEvents = [];
     let lastKeptMs = NaN;
-    rangeFiltered.forEach((event) => {
+    thresholdFiltered.forEach((event) => {
         const eventMs = parseEventTimestamp(event);
         if (!Number.isFinite(lastKeptMs) || Math.abs(lastKeptMs - eventMs) > 30000) {
             dedupedEvents.push(event);
@@ -327,14 +385,25 @@ function updateEventBrowser(browser, events) {
         return;
     }
 
+    const belowActualThresholdEnabled = browser.querySelector("[data-filter-below-actual-threshold]")?.checked;
+    if (belowActualThresholdEnabled && !belowActualMetrics) {
+        renderEventsList(container, events, container.dataset.activeEventId || "");
+        const loadingSummary = browser.querySelector("[data-events-summary]");
+        if (loadingSummary) {
+            loadingSummary.textContent = `Loading 10-second under-actual metrics for ${events.length} saved events...`;
+        }
+        return;
+    }
+
     const filteredEvents = applyEventFilters(events, browser);
     renderEventsList(container, filteredEvents, container.dataset.activeEventId || "");
 
     const summary = browser.querySelector("[data-events-summary]");
     if (summary) {
         const dedupeEnabled = browser.querySelector("[data-filter-dedupe]")?.checked;
-        const suffix = dedupeEnabled ? " after 30s dedupe" : "";
-        summary.textContent = `Showing ${filteredEvents.length} of ${events.length} saved events${suffix}.`;
+        const belowActualThresholdSuffix = belowActualThresholdEnabled ? ", 3s-in-10s filter on" : "";
+        const dedupeSuffix = dedupeEnabled ? ", 30s dedupe on" : "";
+        summary.textContent = `Showing ${filteredEvents.length} of ${events.length} saved events${belowActualThresholdSuffix}${dedupeSuffix}.`;
     }
 }
 
@@ -345,11 +414,19 @@ function initializeEventBrowsers() {
     }
 
     browsers.forEach((browser) => {
-        browser.querySelectorAll("[data-filter-from], [data-filter-to], [data-filter-dedupe]").forEach((control) => {
+        browser.querySelectorAll("[data-filter-from], [data-filter-to], [data-filter-dedupe], [data-filter-below-actual-threshold]").forEach((control) => {
             control.addEventListener("input", () => {
                 updateEventBrowser(browser, browser._events || []);
             });
-            control.addEventListener("change", () => {
+            control.addEventListener("change", async () => {
+                if (control.matches("[data-filter-below-actual-threshold]") && control.checked) {
+                    try {
+                        await ensureBelowActualMetrics(hasMissingBelowActualMetrics(browser._events || []));
+                        applyBelowActualMetrics(browser._events || []);
+                    } catch (error) {
+                        console.error("Failed to load under-actual event metrics", error);
+                    }
+                }
                 updateEventBrowser(browser, browser._events || []);
             });
         });
@@ -360,6 +437,7 @@ function initializeEventBrowsers() {
                 const fromInput = browser.querySelector("[data-filter-from]");
                 const toInput = browser.querySelector("[data-filter-to]");
                 const dedupeInput = browser.querySelector("[data-filter-dedupe]");
+                const belowActualThresholdInput = browser.querySelector("[data-filter-below-actual-threshold]");
                 if (fromInput) {
                     fromInput.value = "";
                 }
@@ -368,6 +446,9 @@ function initializeEventBrowsers() {
                 }
                 if (dedupeInput) {
                     dedupeInput.checked = true;
+                }
+                if (belowActualThresholdInput) {
+                    belowActualThresholdInput.checked = false;
                 }
                 updateEventBrowser(browser, browser._events || []);
             });
@@ -388,11 +469,24 @@ async function refreshEventLists() {
         const response = await fetch("/api/events", { cache: "no-store" });
         const payload = await response.json();
         const events = payload.events || [];
+        if (belowActualMetrics) {
+            applyBelowActualMetrics(events);
+        }
 
         eventBrowsers.forEach((browser) => {
             browser._events = events;
             updateEventBrowser(browser, events);
         });
+
+        if (isBelowActualThresholdFilterEnabled() && hasMissingBelowActualMetrics(events)) {
+            try {
+                await ensureBelowActualMetrics(true);
+                applyBelowActualMetrics(events);
+                refreshAllEventBrowsers();
+            } catch (error) {
+                console.error("Failed to refresh under-actual event metrics", error);
+            }
+        }
     } catch (error) {
         console.error("Failed to refresh saved events list", error);
     }
@@ -406,6 +500,9 @@ function applyInitialEvents() {
 
     eventBrowsers.forEach((browser) => {
         browser._events = initialEvents.events || [];
+        if (belowActualMetrics) {
+            applyBelowActualMetrics(browser._events);
+        }
         updateEventBrowser(browser, browser._events);
     });
 }
