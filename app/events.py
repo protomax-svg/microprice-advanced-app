@@ -160,9 +160,10 @@ class EventStore:
             if event.status == "saved":
                 return event.snapshot_count
 
+            unique_rows = self._deduplicate_event_rows(event_window["rows"])
             snapshots = [
                 self._snapshot_dict_to_model(event_id=event.id, event_ts=event.event_ts, snapshot=row)
-                for row in event_window["rows"]
+                for row in unique_rows
             ]
             session.add_all(snapshots)
             event.snapshot_count = len(snapshots)
@@ -252,6 +253,19 @@ class EventStore:
             ask_3_price=float(snapshot["ask_3_price"]),
             ask_3_qty=float(snapshot["ask_3_qty"]),
         )
+
+    def _deduplicate_event_rows(
+        self,
+        rows: list[dict[str, object]],
+    ) -> list[dict[str, object]]:
+        unique_rows: dict[float, dict[str, object]] = {}
+        for row in rows:
+            unique_rows[float(row["ts"])] = dict(row)
+
+        return [
+            unique_rows[snapshot_ts]
+            for snapshot_ts in sorted(unique_rows)
+        ]
 
     def _serialize_event_summary(self, event: Event) -> dict[str, object]:
         return {
